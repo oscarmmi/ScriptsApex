@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>
+        Creacion Servicios RestFull APEX
+    </title>
+    <link rel="icon" type="image/x-icon" href="./resources/images/42598-rocket-icon.png">
+    <!-- CSS Bootstrap-->
+    <link href="css/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <!-- CSS Alertify-->
+    <link rel="stylesheet" href="css/alertify/alertify.min.css"/>
+    <!-- Alertify Bootstrap theme -->
+    <link rel="stylesheet" href="css/alertify/bootstrap.min.css"/>
+    <style>
+        .cursor-help {
+            cursor:help!important;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container mt-5 mx-5">
+        <div class="row">
+            <!--Primer paso-->
+            <div class="col-12">
+                <a data-bs-toggle="collapse" href="#componenteIngresoJSONInicial" 
+                    id="btnComponenteIngresarJSON" class="btn btn-success" @click="primerPaso">
+                    Ingrese el JSON de entrada a Procesar
+                </a>
+                <button type="button" class="btn btn-primary" @click="abrirModalHistorico">
+                    Mostrar Historial
+                </button>
+            </div>
+            <div class="collapse mt-3" id="componenteIngresoJSONInicial">
+                <div class="card card-body">
+                    <div class="col-12">
+                        <textarea class="form-control" id="jsonInicialxProcesar" v-model="jsonInicial" rows="10"></textarea>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <!--Segundo paso-->
+                        <button class="btn btn-success" @click="procesarJSONInicial">
+                            Procesar JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!--Tercer paso-->
+            <div class="col-12 mt-3" v-show="paso>=2">
+                <h3>
+                    JSON Procesado
+                </h3>
+            </div>
+            <div class="card card-body mt-3" v-show="paso>=2">
+                <div class="accordion">
+                    <div class="accordion-item" v-for="(value, key) in propiedadesjson">
+                        <h2 class="accordion-header" :id="'heading_' + key">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" 
+                                aria-expanded="true" :aria-controls="'collapse_'+ key" :data-bs-target="'#collapse_' + key"
+                                :title="!value.valido ? value.mensaje : '' " :class="!value.valido ? 'text-danger cursor-help' : ''">
+                                <div class="form-check" v-show="value.valido">
+                                    <input class="form-check-input" type="checkbox" 
+                                        value="" @click="validarSeleccionCampo(0, [value.nombre], value.tipo)"
+                                        :id="'check_'+value.nombre">
+                                </div>
+                                <span title="Nombre del Campo" class="fw-bolder">
+                                    {{ value.nombre }}
+                                </span>&nbsp;&nbsp;
+                                <span title="Tipo del Campo">
+                                    (&nbsp;{{ capitalize(value.tipo) }}&nbsp;)
+                                </span>
+                            </button>
+                        </h2>
+                        <div :id="'collapse_' + key" class="accordion-collapse collapse show" :aria-labelledby="'heading_' + key">
+                            <div class="accordion-body">
+                                <ul v-if="value.campos.length">
+                                    <li v-for="campo in value.campos" :class="!campo.valido ? 'text-danger cursor-help' : ''" 
+                                        :title="campo.mensaje" style="list-style-type:none;">
+                                        
+                                        <div class="form-check" v-show="campo.valido && campo.tipo!='object'">
+                                            <input class="form-check-input" type="checkbox" 
+                                                value="" @click="validarSeleccionCampo(1, [value.nombre, campo.nombre], campo.tipo)"
+                                                :id="'check_'+value.nombre+'_'+campo.nombre">
+                                            <label class="form-check-label" for="flexCheckDefault">
+                                                <span title="Nombre del Campo" class="fw-bolder">
+                                                    {{ campo.nombre }}   
+                                                </span>
+                                                <span title="Tipo del Campo">
+                                                    (&nbsp;{{ capitalize(campo.tipo) }}&nbsp;)
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        <div class="accordion my-3" v-show="campo.valido && campo.tipo=='object'">
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header" :id="'heading_'+campo.nombre">
+                                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" 
+                                                        :data-bs-target="'#collapse_'+campo.nombre" aria-expanded="true" 
+                                                        :aria-controls="'collapse_'+campo.nombre">
+                                                        <span title="Nombre del Campo" class="fw-bolder">
+                                                            {{ campo.nombre }}   
+                                                        </span>
+                                                        <span title="Tipo del Campo">
+                                                            (&nbsp;{{ capitalize(campo.tipo) }}&nbsp;)
+                                                        </span>
+                                                    </button>
+                                                </h2>
+                                                <div :id="'collapse_'+campo.nombre" class="accordion-collapse collapse show" 
+                                                    aria-labelledby="'heading_'+campo.nombre">
+                                                    <div class="accordion-body">
+                                                        <ul v-if="campo.subcampos.length">
+                                                            <li v-for="subcampo in campo.subcampos" :class="!subcampo.valido ? 'text-danger cursor-help' : ''" 
+                                                                :title="subcampo.mensaje" style="list-style-type:none;">
+
+                                                                <div class="form-check" v-show="subcampo.valido">
+                                                                    <input class="form-check-input" type="checkbox" 
+                                                                        value="" @click="validarSeleccionCampo(2, [value.nombre, campo.nombre, subcampo.nombre], subcampo.tipo)"
+                                                                        :id="'check_'+value.nombre+'_'+campo.nombre+'_'+subcampo.nombre">
+                                                                    <label class="form-check-label" for="flexCheckDefault">
+                                                                        <span title="Nombre del Campo" class="fw-bolder">
+                                                                            {{ subcampo.nombre }}   
+                                                                        </span>
+                                                                        <span title="Tipo del Campo">
+                                                                            (&nbsp;{{ capitalize(subcampo.tipo) }}&nbsp;)
+                                                                        </span>
+                                                                    </label>
+                                                                </div>
+
+                                                                <span v-show="!subcampo.valido">
+                                                                    {{ subcampo.nombre }}   (&nbsp;{{ capitalize(subcampo.tipo) }}&nbsp;)
+                                                                </span>
+
+                                                            </li>
+                                                        </ul>
+                                                        <p v-else>
+                                                            No hay subcampos relacionados
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span v-show="!campo.valido">
+                                            {{ campo.nombre }}   (&nbsp;{{ capitalize(campo.tipo) }}&nbsp;)
+                                        </span>
+                                    </li>
+                                </ul>
+                                <p v-else>No hay campos relacionados</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 mt-3" v-show="paso>=2">
+                <button class="btn btn-success" @click="procesarCamposSeleccionadosJSON">
+                    Confirmar Selección Campos
+                </button>
+            </div>
+            <!--Tercer paso-->
+
+            <!--Cuarto paso-->
+            <div class="col-12 mt-3" v-show="paso>=3">
+                <h3>
+                    Campos Seleccionados del JSON
+                </h3>
+            </div>
+            <div class="col-12 mt-3" v-show="paso>=3">
+                <table class="table table-striped table-hover" v-for="(item, key) in aSeleccionados">
+                    <thead>
+                        <tr>
+                            <th colspan="2" scope="col">
+                                {{ item.campo }}  (&nbsp;{{ capitalize(item.tipo) }}&nbsp;)&nbsp;&nbsp;&nbsp;&nbsp;
+                                <button class="btn btn-primary" @click="exportarEquivalenciasCamposActual(key)"
+                                    title="Haga clic sobre este botón para exportar las equivalencias de nombres original y los asignados">
+                                    Exportar Equivalencias Campos - Nombres 
+                                </button>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th scope="col">
+                                Ruta
+                            </th>
+                            <th scope="col">
+                                Ingrese el nombre que se le va a asignar a este campo
+                            </th>
+                            <th scope="col">
+                                Tipo Dato
+                            </th>
+                            <th scope="col">
+                                Longitud
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(subcampo, indice) in item.subcampos">
+                            <th scope="row">
+                                {{ subcampo.ruta_texto }}
+                            </th>
+                            <td>
+                                <input type="text" class="form-control" placeholder="Ingrese el nombre" 
+                                    v-model="subcampo.nombre_equivalente" @input="validarNombreEquivalente(key, indice)">
+                            </td>
+                            <td>
+                                <select class="form-select" 
+                                    aria-label="Seleccione el tipo de dato"
+                                    >
+                                    tiposGenerales
+                                    <option v-for="(tipoGeneral, keyGeneral) in tiposGenerales" :value="keyGeneral">
+                                        {{ tipoGeneral }}
+                                    </option>
+                                    <!--
+                                    <option value="1">
+                                        Varchar
+                                    </option>
+                                    <option value="2">
+                                        Number
+                                    </option>
+                                    <option value="3">
+                                        Float
+                                    </option>
+                                    -->
+                                  </select>
+                            </td>
+                            <td>
+                                <input class="form-control" type="text" placeholder="Longitud" aria-label="Ingrese la longitud del campo">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-12 mt-3" v-show="paso>=3">
+                <button class="btn btn-success" @click="procesarNombresEquivalentes">
+                    Confirmar Ingreso de Nombres
+                </button>
+            </div>
+            <!--Cuarto paso-->
+
+
+            <!--Quinto paso-->
+            <div class="col-12 mt-3" v-show="paso>=4">
+                <h3>
+                    Ajustes finales para la generación de los scripts
+                </h3>
+            </div>
+            <div v-for="ajuste in ajustesScripts">
+                <div class="col-12 mt-3" v-show="paso>=4">
+                    <h5 class="text-primary">
+                        {{ ajuste.campo }}  
+                        <span class="text-success">
+                            (&nbsp;{{ capitalize(ajuste.tipo) }}&nbsp;)
+                        </span>
+                    </h5>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">
+                            Nombre Tabla
+                        </span>
+                        <input type="text" class="form-control" v-model="ajuste.tabla.nombre">
+                    </div>
+                </div>
+                <div class="col-3 mt-3" v-show="paso>=4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" v-model="ajuste.tabla.generar_script">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          Script creación tabla
+                        </label>
+                    </div>
+                </div>
+                <div class="col-3 mt-3" v-show="paso>=4 && ajuste.tabla.generar_script">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox"  
+                            v-model="ajuste.tabla.generar_secuencial">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          Script Id autoincremental
+                        </label>
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">
+                            Nombre Procedimiento
+                        </span>
+                        <input type="text" class="form-control" v-model="ajuste.procedimiento.nombre" >
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" v-model="ajuste.procedimiento.generar_script">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          Generar Script creación del Procedimiento
+                        </label>
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">
+                            Nombre Función
+                        </span>
+                        <input type="text" class="form-control" v-model="ajuste.funcion.nombre">
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" v-model="ajuste.funcion.generar_script">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          Generar Script creación de la Función
+                        </label>
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" v-model="ajuste.inserts.generar_script">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          Generar Inserts
+                        </label>
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">
+                            Tabla Insert
+                        </span>
+                        <input type="text" class="form-control" v-model="ajuste.inserts.nombre_tabla">
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 mt-3" v-show="paso>=4">
+                <button class="btn btn-success" @click="generarScripts">
+                    Generar Scripts
+                </button>
+            </div>
+            <!--Quinto paso-->
+
+            <!--Sexto paso-->
+            <div class="col-12 mt-3" v-show="paso>=5">
+                
+            </div>
+            <div class="col-12 mt-3" v-show="paso>=5" v-for="(ajuste, key) in ajustesScripts">
+                <h3>
+                    Scripts  
+                    <span class="text-primary">
+                        {{ ajuste.campo }}
+                    </span>
+                </h3>
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" :id="'tabla_tab_' + key" data-bs-toggle="tab" 
+                            :data-bs-target="'#tabla_panel_' + key" type="button" role="tab" 
+                            :aria-controls="'tabla_panel_' + key" aria-selected="true">
+                            Tabla
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" :id="'procedimiento_tab_' + key" data-bs-toggle="tab" 
+                            :data-bs-target="'#procedimiento_panel_' + key" type="button" role="tab" :aria-controls="'procedimiento_panel_' + key" 
+                            aria-selected="false">
+                            Procedimiento
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" :id="'funcion_tab_' + key" data-bs-toggle="tab" 
+                            :data-bs-target="'#funcion_panel_' + key" type="button" role="tab" :aria-controls="'funcion_panel_' + key" 
+                            aria-selected="false">
+                            Función
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" :id="'inserts_tab_' + key" data-bs-toggle="tab" 
+                            :data-bs-target="'#inserts_panel_' + key" type="button" role="tab" :aria-controls="'inserts_panel_' + key" 
+                            aria-selected="false">
+                            Inserts
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-12 mt-3 tab-content" v-show="paso>=5" v-for="(ajuste, key) in ajustesScripts">
+                <div class="tab-pane fade show active" :id="'tabla_panel_' + key" 
+                    role="tabpanel" aria-labelledby="'tabla_tab_' + key">
+                    <textarea v-model="ajuste.tabla.script" rows="10" class="form-control bg-dark text-white"></textarea>
+                </div>
+                <div class="tab-pane fade show" :id="'procedimiento_panel_' + key" 
+                    role="tabpanel" aria-labelledby="'procedimiento_tab_' + key">
+                    <textarea v-model="ajuste.procedimiento.script" rows="10" class="form-control bg-dark text-white"></textarea>
+                </div>
+                <div class="tab-pane fade show" :id="'funcion_panel_' + key" 
+                    role="tabpanel" aria-labelledby="'funcion_tab_' + key">
+                    <textarea v-model="ajuste.funcion.script" rows="10" class="form-control bg-dark text-white"></textarea>
+                </div>
+                <div class="tab-pane fade show" :id="'inserts_panel_' + key" 
+                    role="tabpanel" aria-labelledby="'inserts_tab_' + key">
+                    <textarea v-model="ajuste.inserts.script" rows="10" class="form-control bg-dark text-white"></textarea>
+                </div>
+            </div>
+            <!--Sexto paso-->
+
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="modalHistorial">
+            <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Historico JSONs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group">
+                        <button type="button" v-for="(value, key) in historico"
+                            :id="'historico_'+key" aria-current="true" 
+                            class="list-group-item list-group-item-action listados-historicos" 
+                            :class="!key ? 'active': ''" @click="seleccionTemporalHistorico(key)"
+                            @dblclick="seleccionHistorico">
+                            {{ value }}
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cerrar
+                </button>
+                <button type="button" class="btn btn-primary" @click="seleccionHistorico">
+                    Seleccionar
+                </button>
+                </div>
+            </div>
+            </div>
+        </div>
+        <!-- Modal -->
+    </div>    
+</body>
+<!-- JavaScript Alertify -->
+<script src="js/alertify.min.js"></script>
+<script src="js/bootstrap.bundle.min.js"></script>
+<!-- CDN VueJS -->
+<script src="js/vue.js"></script>
+<script>
+    const miApp = new Vue({
+        el: '#app',
+        data:{
+            regExpNumerico: /^\d+$/, 
+            paso: 0, 
+            jsonInicial: '',
+            jsonProcesado: '', 
+            propiedadesjson:[], 
+            historico: [], 
+            principales: [], 
+            tiposPrincipales: [],
+            contadorCamposPrincipales: [],
+            aCamposSeleccionados: [],
+            aCamposSeleccionadosStrings: [],
+            contadorSeleccionados: 0, 
+            aSeleccionados: [],
+            ajustesScripts: [],
+            tiposGenerales: ['Varchar', 'Number', 'Float']
+        }, 
+        methods: {
+            generarScripts: function(){
+                let indicador = 0;
+                let aErrores = [];
+                for (const a in this.ajustesScripts) {
+                    if(this.ajustesScripts[a].tabla.generar_script){
+                        indicador++;
+                        if(this.ajustesScripts[a].tabla.nombre.trim() == ''){
+                            aErrores.push("- El nombre de la tabla no puede estar vacío");
+                        }
+                    }
+                    if(this.ajustesScripts[a].procedimiento.generar_script){
+                        indicador++;
+                        if(this.ajustesScripts[a].procedimiento.nombre.trim() == ''){
+                            aErrores.push("- El nombre del procedimiento no puede estar vacío");
+                        }
+                    }
+                    if(this.ajustesScripts[a].funcion.generar_script){
+                        indicador++;
+                        if(this.ajustesScripts[a].funcion.nombre.trim() == ''){
+                            aErrores.push("- El nombre de la función no puede estar vacío");
+                        }
+                    }
+                    if(this.ajustesScripts[a].inserts.generar_script){
+                        indicador++;
+                        if(this.ajustesScripts[a].inserts.nombre_tabla.trim() == ''){
+                            aErrores.push("- El nombre de la tabla para los inserts no puede estar vacío");
+                        }
+                    }
+                }                
+                if(!indicador){
+                    alertify.error("- Debe seleccionar al menos un script para ser generado");
+                    return;
+                }
+                if(aErrores.length){
+                    for (const a in aErrores) {
+                        alertify.error(aErrores[a]);
+                    }
+                    return;
+                }
+                this.crearScriptTabla();
+                if(this.paso===4){                    
+                    this.paso++;
+                }
+
+            },
+            crearScriptTabla: function(){
+                let scripts = [];
+                for (const a in this.ajustesScripts) {
+                    this.ajustesScripts[a].tabla.script = '';
+                    if(this.ajustesScripts[a].tabla.generar_script){
+                        this.ajustesScripts[a].tabla.script = '';
+                        let nombreTabla = this.ajustesScripts[a].tabla.nombre.trim();
+                        let cadenaScript = 'CREATE TABLE "' + nombreTabla + '" (';
+                        let idPK = '';                        
+                        if(this.ajustesScripts[a].tabla.generar_secuencial){// este es el ID, llave primaria de la tabla
+                            cadenaScript = '-- SE RECOMIENDA LA EJECUCION DE ESTA SENTENCIA PARA LA CREACION DE LA TABLA PRIMERO \n' +cadenaScript;
+                            idPK = 'ID_'+ nombreTabla;
+                            cadenaScript += '"'+ idPK +'" NUMBER, \n';
+                        }
+                        let aCampos = [];
+                        for (const b in this.aSeleccionados[a].subcampos) {
+                            aCampos.push('"'+this.aSeleccionados[a].subcampos[b].nombre_equivalente+'" VARCHAR2(50)');
+                        }
+                        let secuencia = '';
+                        if(this.ajustesScripts[a].tabla.generar_secuencial){
+                            aCampos.push('CONSTRAINT "' + nombreTabla + '_PK" PRIMARY KEY ("' + idPK + '") USING INDEX  ENABLE');
+                            secuencia = `       
+                                -- ESTA SENTENCIA ES PARA LA CREACION DE LA SECUENCIA, SE RECOMIENDA EJECUTARLA POSTERIOR A LA CREACION DE LA TABLA                          
+                                CREATE OR REPLACE EDITIONABLE TRIGGER  "BI_${nombreTabla}" 
+                                before insert on "${nombreTabla}"               
+                                for each row  
+                                begin   
+                                if :NEW."${idPK}" is null then 
+                                    select "${nombreTabla}_SEQ".nextval into :NEW."${idPK}" from sys.dual; 
+                                end if; 
+                                end; 
+
+                                /
+
+                                ALTER TRIGGER  "BI_${nombreTabla}" ENABLE
+                                /
+                            `;
+                        }
+                        this.ajustesScripts[a].tabla.script = cadenaScript + aCampos.join(", \n") + ")/" + secuencia;
+                    }
+
+                    // Creacion Script Procedimiento 
+                    this.ajustesScripts[a].procedimiento.script = '';
+                    if(this.ajustesScripts[a].procedimiento.generar_script){
+                        this.ajustesScripts[a].procedimiento.script = '';
+                        let nombreProcedimiento = this.ajustesScripts[a].procedimiento.nombre;
+                        let cadenaScript = 'create or replace procedure ' + nombreProcedimiento + '(v_action in varchar2, P_DATA IN CLOB,v_result OUT VARCHAR2) IS \n';
+                        cadenaScript +=`
+                                L_ID                VARCHAR2(50);
+                                L_COUNT_DATA        NUMBER;
+                                J_JSON              APEX_JSON.T_VALUES;
+                                L_JSON              CLOB;
+                        `;
+                        let aCampos = [];      
+                        let camposExtraccion = [];
+                        for (const b in this.aSeleccionados[a].subcampos) {
+                            aCampos.push('L_'+this.aSeleccionados[a].subcampos[b].nombre_equivalente+' VARCHAR2(50)');
+                            // Para los campos extraccion es importante tener en cuenta que se debe realizar un cambio para tener en cuenta los tipos de datos get_varchar2
+                            if(this.aSeleccionados[a].tipo == 'array'){
+                                camposExtraccion.push("L_"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+":=APEX_JSON.get_varchar2(p_path => '"+ this.aSeleccionados[a].campo +"['||k||']."+ this.aSeleccionados[a].subcampos[b].ruta_texto +"', p_values=>J_JSON)");
+                            }else if(this.aSeleccionados[a].tipo == 'object'){
+                                camposExtraccion.push("L_"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+":=APEX_JSON.get_varchar2(p_path => '"+ this.aSeleccionados[a].campo +"."+ this.aSeleccionados[a].subcampos[b].ruta_texto +"', p_values=>J_JSON)");
+                            }
+                        }
+                        let subScriptExtraccion = "";
+                        if(this.aSeleccionados[a].tipo == 'array'){
+                            let scriptExtraccionCampos = camposExtraccion.join("; \n") + ';\n';
+                            subScriptExtraccion = `
+                                L_COUNT_DATA:=APEX_JSON.get_count(p_path => '${this.aSeleccionados[a].campo}', p_values=>J_JSON);
+
+                                FOR k IN 1..L_COUNT_DATA
+                                    LOOP
+
+                                    ${scriptExtraccionCampos}
+
+                                END LOOP;                                        
+                            `;
+                        }else if(this.aSeleccionados[a].tipo == 'object'){
+                            subScriptExtraccion = scriptExtraccionCampos;
+                        }
+                        cadenaScript += aCampos.join(";\n") + ';\n';
+                        cadenaScript +=`
+                                BEGIN 
+                                    --Se almacenan los registros del JSON recibido en la variable L_JSON
+                                    L_JSON:=P_DATA;
+
+                                    --Convertimos el archivo JSON
+                                    APEX_JSON.PARSE(J_JSON,L_JSON);
+
+                                    IF APEX_JSON.does_exist(p_path => '${this.aSeleccionados[a].campo}', p_values=>J_JSON) THEN 
+
+                                    ${subScriptExtraccion}                                        
+
+                                    END IF;
+                                END ${nombreProcedimiento};
+                        `;
+                        this.ajustesScripts[a].procedimiento.script = cadenaScript;
+                    }
+                    // Creacion Script Procedimiento    
+                    
+                    // Creacion Script Funcion  
+                    this.ajustesScripts[a].funcion.script = '';
+                    if(this.ajustesScripts[a].funcion.generar_script && this.ajustesScripts[a].tabla.nombre.trim() != ''){
+                        let nombreTabla = this.ajustesScripts[a].tabla.nombre.trim();
+                        this.ajustesScripts[a].funcion.script = '';
+                        let nombreFuncion = this.ajustesScripts[a].funcion.nombre;
+                        let cadenaScript = 'create or replace function ' + nombreFuncion + ' return CLOB is \n';
+                        let aCampos = [];
+                        let aCamposExportar = [];
+                        for (const b in this.aSeleccionados[a].subcampos) {
+                            aCampos.push(this.aSeleccionados[a].subcampos[b].nombre_equivalente);
+                            aCamposExportar.push("apex_json.write('"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+"', TRIM(cur_rec."+ this.aSeleccionados[a].subcampos[b].nombre_equivalente +"),true)");
+                        }
+                        let camposSeleccionados = aCampos.join(", \n");
+                        let camposExportarSeleccionados = aCamposExportar.join("; \n") + ";\n";
+                        // Tener en cuenta que en esta consulta es donde se deben realizar cambios para agregar los filtros 
+                        let consultaFuncion = `
+                            SELECT 
+                            ${camposSeleccionados} 
+                            FROM ${nombreTabla} 
+                        `;
+                        cadenaScript += `
+                            resultado                   clob;
+                            BEGIN
+                            
+                            apex_json.initialize_clob_output;
+
+                            resultado:=apex_json.get_clob_output;
+
+                            apex_json.open_object;
+
+                                apex_json.open_array('data');
+                                    
+                                    FOR cur_rec in (
+                                        ${consultaFuncion}
+                                    ) LOOP
+                                        apex_json.open_object;
+                                        ${camposExportarSeleccionados}
+                                        apex_json.close_object;
+                                    END LOOP;
+
+                                apex_json.close_array;
+
+                            apex_json.close_object;
+
+                            apex_json.free_output;
+
+                            RETURN resultado;
+                            END;
+                        `;
+                        this.ajustesScripts[a].funcion.script = cadenaScript;
+                    }
+                    // Creacion Script Funcion  
+
+                    // Creacion Script Inserts  
+                    this.ajustesScripts[a].inserts.script = '';
+                    if(this.ajustesScripts[a].inserts.generar_script && this.ajustesScripts[a].inserts.nombre_tabla.trim() != ''){
+                        for (const b in this.aSeleccionados) {
+                            let nombreTablaInsert = this.ajustesScripts[a].inserts.nombre_tabla;                    
+                            let aElemento = this.jsonProcesado[this.aSeleccionados[b]['campo']];
+                            let subCamposFinales = [];
+                            let aSubcampos = this.aSeleccionados[b]['subcampos'];
+                            let equivalentes = [];
+                            for (const d in aSubcampos) {
+                                equivalentes.push(aSubcampos[d]['nombre_equivalente']);
+                                subCamposFinales.push(aSubcampos[d]['ruta_texto']);
+                            }
+                            let camposEquivalentesInsert = equivalentes.join(", ");
+                            let sciptInsert = "";                  
+                            if(this.aSeleccionados[b]['tipo'] == 'array'){
+                                for (const c in aElemento) {
+                                    let valores = [];
+                                    for (const e in subCamposFinales) {
+                                        valores.push(`'${aElemento[c][subCamposFinales[e]]}'`);   
+                                    }
+                                    let valoresInsert = valores.join(", ");
+                                    sciptInsert += `
+                                        INSERT INTO ${nombreTablaInsert} (${camposEquivalentesInsert}) 
+                                        VALUES (${valoresInsert});
+                                    `;
+                                }
+                            }else{
+                                let valores = [];
+                                for (const e in subCamposFinales) {
+                                    valores.push(`'${aElemento[subCamposFinales[e]]}'`);   
+                                }
+                                let valoresInsert = valores.join(", ");
+                                sciptInsert += `
+                                    INSERT INTO ${nombreTablaInsert} (${camposEquivalentesInsert}) 
+                                    VALUES (${valoresInsert});
+                                `;
+                            }
+                            this.ajustesScripts[a].inserts.script = sciptInsert;
+                        }                        
+                    }
+                } 
+            },
+            exportarEquivalenciasCamposActual: function(key){
+                let errores = this.validarSeleccionadosActual(this.aSeleccionados[key].subcampos, this.aSeleccionados[key]);
+                if(errores.length){
+                    for (const a in errores) {
+                        alertify.error(errores[a]);
+                    }
+                    return;
+                }
+                let aCSV = [];
+                aCSV.push(['Nombre Original', 'Nombre Asignado']);
+                for (const a in this.aSeleccionados[key].subcampos) {
+                    aCSV.push([this.aSeleccionados[key].subcampos[a].ruta_texto, this.aSeleccionados[key].subcampos[a].nombre_equivalente]);
+                }
+                let fileName = this.aSeleccionados[key].campo + "_" + Date.now() + ".csv";
+                this.exportToCsv(fileName, aCSV);
+                alertify.success("- El archivo "+ fileName + " se generó correctamente");
+            },
+            validarNombreEquivalente: function(key, indice){
+                if(!parseInt(this.aSeleccionados[key].subcampos[indice].nombre_equivalente.length)){
+                    return;
+                }
+                let nombre_equivalente = this.aSeleccionados[key].subcampos[indice].nombre_equivalente;
+                let primerCaracter = nombre_equivalente.charAt(0);
+                if(this.regExpNumerico.test(primerCaracter)){
+                    alertify.error("- No se puede asignar un nombre con un número al inicio");
+                    this.aSeleccionados[key].subcampos[indice].nombre_equivalente = '';
+                    return;
+                }
+            },
+            validarSeleccionadosActual: function(subcampos, seleccionados){
+                let errores = [];
+                for (const b in subcampos) {
+                    if(subcampos[b].nombre_equivalente == ''){
+                        errores.push("El campo "+ 
+                            subcampos[b].ruta_texto+
+                            " de "+seleccionados.campo+" ("+seleccionados.tipo +"), "+
+                            "no tiene asignado un nombre"
+                        );
+                    }
+                }
+                return errores;
+            },
+            procesarNombresEquivalentes: function(){
+                let aErrores = [];
+                for (const a in this.aSeleccionados) {
+                    let errores =this.validarSeleccionadosActual(this.aSeleccionados[a].subcampos, this.aSeleccionados[a]);
+                    if(errores.length){
+                        aErrores = aErrores.concat(errores);
+                    }
+                }
+                if(parseInt(aErrores.length)){
+                    for (const a in aErrores) {
+                        alertify.error(aErrores[a]);
+                    }
+                    return;
+                }
+                if(this.paso===3){                    
+                    this.paso++;
+                }
+                this.recargarArregloAjustesScript();
+            },
+            recargarArregloAjustesScript: function(){
+                this.ajustesScripts = [];
+                let that = this;
+                for (const a in that.aSeleccionados) {
+                    this.ajustesScripts.push({
+                        campo: that.aSeleccionados[a].campo, 
+                        tipo: that.aSeleccionados[a].tipo, 
+                        tabla: {
+                            nombre:'',
+                            generar_script: 0, 
+                            generar_secuencial: 0,
+                            script: ''
+                        },
+                        procedimiento: {
+                            nombre: '', 
+                            generar_script: 0,
+                            script: ''
+                        },
+                        funcion: {
+                            nombre: '', 
+                            generar_script: 0,
+                            script: ''
+                        }, 
+                        inserts:{
+                            nombre_tabla: '', 
+                            generar_script: 0,
+                            script:''
+                        }
+                    });
+                }
+            },
+            exportToCsv: function(filename, rows) {
+                var processRow = function (row) {
+                    var finalVal = '';
+                    for (var j = 0; j < row.length; j++) {
+                        var innerValue = row[j] === null ? '' : row[j].toString();
+                        if (row[j] instanceof Date) {
+                            innerValue = row[j].toLocaleString();
+                        };
+                        var result = innerValue.replace(/"/g, '""');
+                        if (result.search(/("|,|\n)/g) >= 0)
+                            result = '"' + result + '"';
+                        if (j > 0)
+                            finalVal += ',';
+                        finalVal += result;
+                    }
+                    return finalVal + '\n';
+                };
+                var csvFile = '';
+                for (var i = 0; i < rows.length; i++) {
+                    csvFile += processRow(rows[i]);
+                }
+                var blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
+                if (navigator.msSaveBlob) { // IE 10+
+                    navigator.msSaveBlob(blob, filename);
+                } else {
+                    var link = document.createElement("a");
+                    if (link.download !== undefined) { // feature detection
+                        // Browsers that support HTML5 download attribute
+                        var url = URL.createObjectURL(blob);
+                        link.setAttribute("href", url);
+                        link.setAttribute("download", filename);
+                        link.style.visibility = 'hidden';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+                }
+            },
+            procesarCamposSeleccionadosJSON: function(){
+                if(!this.contadorSeleccionados){
+                    alertify.error("- No hay campos seleccionados no puede proceder al siguiente paso");
+                    return;
+                }          
+                if(this.paso===2){
+                    this.paso++;
+                }
+                let that = this;
+                that.aSeleccionados = [];
+                for (const a in that.principales) {
+                    let subCampos = [];
+                    for (const b in that.aCamposSeleccionados[a]) {
+                        let numeroRegistros = parseInt(that.aCamposSeleccionados[a][b].length);
+                        subCampos.push({
+                            ruta: that.aCamposSeleccionados[a][b], 
+                            ruta_texto: that.aCamposSeleccionados[a][b].slice(1, numeroRegistros).join("."),
+                            nombre_equivalente: that.aCamposSeleccionados[a][b][(numeroRegistros - 1)].toUpperCase(),
+                            tipo_dato: '', 
+                            longitud: ''
+                        });
+                    }
+                    if(subCampos.length){
+                        that.aSeleccionados.push({
+                            campo: that.principales[a], 
+                            tipo: that.tiposPrincipales[a],
+                            subcampos: subCampos
+                        });
+                    }
+                }                
+            },            
+            validarSeleccionCampo:function (nivel, path, tipo){
+                if(!document.querySelector("#check_"+path.join("_"))){
+                    return;
+                }
+                // En caso que se haya seleccionado el check 
+                if(document.querySelector("#check_"+path.join("_")).checked){
+                    // Acciones para los campos principales del json 
+                    if(!nivel && parseInt(path.length) && this.principales.indexOf(path[0])===-1){
+                        this.principales.push(path[0]);
+                        this.tiposPrincipales.push(tipo);
+                        this.contadorCamposPrincipales.push(0);
+                        this.aCamposSeleccionados.push([]);
+                        this.aCamposSeleccionadosStrings.push([]);
+                    }else{// Para los campos hijos del json
+                        if(!parseInt(path.length)){// En caso de que no tenga elementos el array path no se debe permitir que continue 
+                            alertify.error("- El check seleccionado no es válido y por lo tanto no es posible seleccionarlo");
+                            return;
+                        }  
+                        //Se realiza la busqueda del principal relacionado con el elemento actual 
+                        let indice = this.principales.indexOf(path[0]);
+                        if(indice >= 0){// En caso de encontrarlo debemos proceder a aumentar el contadorCamposPrincipales 
+                            this.contadorCamposPrincipales[indice]++;
+                            this.contadorSeleccionados++;
+                            this.aCamposSeleccionados[indice].push(path);
+                            this.aCamposSeleccionadosStrings[indice].push(path.join("|||"));
+                        }else{
+                            /*
+                            *  En caso que no encontremos el principal del elemento actual, no podremos permitir que este 
+                            *  sea seleccionado 
+                            */
+                            alertify.error("- Debe seleccionar el campo padre ( "+path[0]+" ) para poder seleccionar los campos hijos");
+                            document.querySelector("#check_"+path.join("_")).checked = false;
+                            return;
+                        }
+                    }
+                }else{// En caso que se haya deseleccionado  el check 
+                    // Acciones para los campos principales del json 
+                    if(!nivel && parseInt(path.length)){
+                        let indice = this.principales.indexOf(path[0]);
+                        if(indice >= 0){
+                            if(!this.contadorCamposPrincipales[indice]){
+                                this.principales.splice(indice, 1);
+                                this.tiposPrincipales.splice(indice, 1);
+                                this.contadorCamposPrincipales.splice(indice, 1);   
+                                this.aCamposSeleccionadosStrings.splice(indice, 1);
+                                this.aCamposSeleccionados.splice(indice, 1);
+                            }else{
+                                alertify.error("- No es posible deseleccionar el campo puesto que varios campos hijos ya fueron seleccionados");
+                                document.querySelector("#check_"+path.join("_")).checked = true;
+                            }
+                        }
+                    }else{// Para los campos hijos del json
+                        if(!parseInt(path.length)){// En caso de que no tenga elementos el array path no se debe realizar ninguna acción  
+                            alertify.error("- El check deseleccionado no es válido y por lo tanto no se realizara ninguna acción");
+                            return;
+                        }  
+                        //Se realiza la busqueda del principal relacionado con el elemento actual 
+                        let indice = this.principales.indexOf(path[0]);
+                        if(indice >= 0){// En caso de encontrarlo debemos proceder a reducir el contadorCamposPrincipales 
+                            this.contadorCamposPrincipales[indice]--;
+                            this.contadorSeleccionados--;
+                            let pathString = path.join("|||");
+                            let indiceCadena = this.aCamposSeleccionadosStrings[indice].indexOf(pathString);
+                            if(indiceCadena >= 0){
+                                this.aCamposSeleccionadosStrings[indice].splice(indiceCadena, 1);
+                                this.aCamposSeleccionados[indice].splice(indiceCadena, 1);
+                            }
+                        }
+                    }
+                }
+            },
+            seleccionHistorico: function(){
+                if(!parseInt(document.querySelectorAll(".active.listados-historicos").length)){
+                    alertify.error("- Debe seleccionar un historico para ser cargado");
+                    return;
+                }
+                this.jsonInicial = document.querySelector(".active.listados-historicos").innerText;
+                this.cerrarModalHistorico();
+                if(!(document.querySelector('#componenteIngresoJSONInicial').offsetWidth > 0 
+                    && document.querySelector('#componenteIngresoJSONInicial').offsetHeight > 0)){
+                        document.querySelector("#btnComponenteIngresarJSON").click();
+                    alertify.success("- El JSON se cargo correctamente");
+                }
+            },
+            seleccionTemporalHistorico: function(key){
+                document.querySelector(".listados-historicos.active").classList.remove('active');
+                document.querySelector("#historico_"+key).classList.add('active');
+            },
+            cargarHistorico: function(){
+                let contadorHistorialJson = this.buscarContadorHistoricoJson();     
+                this.historico = [];
+                for(let i=contadorHistorialJson;i >= 0; i--){
+                    if(localStorage.getItem('historial_json_'+i)){
+                        this.historico.push(localStorage.getItem('historial_json_'+i));
+                    }
+                }
+            },
+            abrirModalHistorico: function(){
+                let modalHistorico = bootstrap.Modal.getOrCreateInstance(document.querySelector('#modalHistorial'));
+                this.cargarHistorico();
+                if(!parseInt(this.historico.length)){
+                    alertify.error("- No hay JSONs guardados en el historico");
+                    return;
+                }
+                modalHistorico.show();
+                
+            },
+            cerrarModalHistorico: function(){
+                let modalHistorico = bootstrap.Modal.getOrCreateInstance(document.querySelector('#modalHistorial'));
+                modalHistorico.hide();
+            },
+            capitalize: function (word) {
+                return word[0].toUpperCase() + word.substring(1).toLowerCase();
+            },
+            primerPaso: function(){
+                if(!(document.querySelector('#componenteIngresoJSONInicial').offsetWidth > 0 
+                    && document.querySelector('#componenteIngresoJSONInicial').offsetHeight > 0)){
+                    alertify.success("- Ingrese el texto con el JSON a procesar");
+                }
+                if(!this.paso){
+                    this.paso++;
+                }
+            }, 
+            validarNombre: function(nombreCampo){
+                let rValidacion = {
+                    valido: 1, 
+                    mensaje: ''
+                };
+                if(nombreCampo.indexOf(".") >= 0 || nombreCampo.indexOf(",") >= 0){
+                    rValidacion.valido = 0;
+                    rValidacion.mensaje = '- El nombre del campo tiene caracteres que no son válidos';
+                }
+                return rValidacion;
+            },
+            buscarContadorHistoricoJson: function(){
+                let contadorHistorialJson = 0;
+                if(localStorage.getItem('contadorHistorialJson')){
+                    contadorHistorialJson = parseInt(localStorage.getItem('contadorHistorialJson')); 
+                }  
+                return contadorHistorialJson;
+            },
+            guardarJsonHistorial: function(jsonInicial){                    
+                let contadorHistorialJson = this.buscarContadorHistoricoJson();          
+                localStorage.setItem('historial_json_'+contadorHistorialJson, jsonInicial);
+                contadorHistorialJson++;
+                localStorage.setItem('contadorHistorialJson', contadorHistorialJson);
+            },
+            validacionCamposObjetoActual(objeto){
+                let aCampos = [];
+                for (const c in objeto) {
+                    let rValidacion = this.validarNombre(c);
+                    let subCampos = [];
+                    let tipoCampo = 'undefined';
+                    if(objeto[c] != null){
+                        tipoCampo = typeof objeto[c];
+                    }
+                    if(tipoCampo == 'object'){
+                        for (const d in objeto[c]) {
+                            let rValidacionSubcampo = this.validarNombre(d);
+                            let tipoSubcampo = 'undefined';
+                            if(objeto[c][d] != null){
+                                tipoSubcampo = typeof objeto[c][d];
+                            }                            
+                            subCampos.push({
+                                nombre: d, 
+                                tipo: tipoSubcampo,
+                                valido: rValidacionSubcampo.valido,
+                                mensaje: rValidacionSubcampo.mensaje
+                            });
+                        }
+                    }
+                    aCampos.push({
+                        nombre: c, 
+                        tipo: tipoCampo,
+                        valido: rValidacion.valido,
+                        mensaje: rValidacion.mensaje,
+                        subcampos: subCampos
+                    });
+                }
+                return aCampos;
+            }, 
+            procesarJSONInicial: function(){//Segundo Paso 
+                if(!this.jsonInicial.trim()){
+                    alertify.error("- El campo JSON no debe estar vacío");
+                    return;
+                }
+                try{
+                    this.jsonProcesado = JSON.parse(this.jsonInicial.trim());
+                    this.guardarJsonHistorial(this.jsonInicial.trim());                    
+                    this.propiedadesjson = [];
+                    let that = this;
+                    for (const a in this.jsonProcesado) {
+                        let tipoElemento = typeof this.jsonProcesado[a];
+                        let aCampos = [];
+                        if(tipoElemento == 'object'){
+                            if(Array.isArray(that.jsonProcesado[a])){
+                                tipoElemento = 'array';
+                                if(parseInt(that.jsonProcesado[a].length)){
+                                    aCampos = that.validacionCamposObjetoActual(that.jsonProcesado[a][0]);
+                                }
+                            }else{
+                                aCampos = that.validacionCamposObjetoActual(that.jsonProcesado[a]);
+                            }                            
+                        }
+                        let rValidacion = that.validarNombre(a);
+                        this.propiedadesjson.push({
+                            nombre:a, 
+                            tipo: tipoElemento, 
+                            campos: aCampos, 
+                            valido: rValidacion.valido,
+                            mensaje: rValidacion.mensaje
+                        });
+                    }
+                    document.querySelector('#btnComponenteIngresarJSON').click();
+                    if(this.paso===1){
+                        this.paso++;
+                    }
+                } catch ( e ) {
+                    alertify.error('- No es posible convertir a JSON el texto ingresado');
+              } 
+            }
+        }
+    })
+</script>
+</html>
