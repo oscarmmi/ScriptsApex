@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/alertify/alertify.min.css"/>
     <!-- Alertify Bootstrap theme -->
     <link rel="stylesheet" href="css/alertify/bootstrap.min.css"/>
+
     <style>
         .cursor-help {
             cursor:help!important;
@@ -211,7 +212,8 @@
                             </td>
                             <td>
                                 <input class="form-control" type="text" placeholder="Longitud" 
-                                    aria-label="Ingrese la longitud del campo" v-model="subcampo.longitud">
+                                    aria-label="Ingrese la longitud del campo" 
+                                    v-model="subcampo.longitud" @input="validarLongitudNumerica(key, indice)">
                             </td>
                         </tr>
                     </tbody>
@@ -231,7 +233,7 @@
                     Ajustes finales para la generación de los scripts
                 </h3>
             </div>
-            <div v-for="ajuste in ajustesScripts">
+            <div v-for="(ajuste, key) in ajustesScripts">
                 <div class="col-12 mt-3" v-show="paso>=4">
                     <h5 class="text-primary">
                         {{ ajuste.campo }}  
@@ -245,7 +247,7 @@
                         <span class="input-group-text">
                             Nombre Tabla
                         </span>
-                        <input type="text" class="form-control" v-model="ajuste.tabla.nombre">
+                        <input type="text" class="form-control" v-model="ajuste.tabla.nombre" @input="validarAjusteCreacionScript('tabla', key, ajuste.tabla.nombre);">
                     </div>
                 </div>
                 <div class="col-3 mt-3" v-show="paso>=4">
@@ -270,7 +272,7 @@
                         <span class="input-group-text">
                             Nombre Procedimiento
                         </span>
-                        <input type="text" class="form-control" v-model="ajuste.procedimiento.nombre" >
+                        <input type="text" class="form-control" v-model="ajuste.procedimiento.nombre" @input="validarAjusteCreacionScript('procedimiento', key, ajuste.procedimiento.nombre);">
                     </div>
                 </div>
                 <div class="col-6 mt-3" v-show="paso>=4">
@@ -286,7 +288,7 @@
                         <span class="input-group-text">
                             Nombre Función
                         </span>
-                        <input type="text" class="form-control" v-model="ajuste.funcion.nombre">
+                        <input type="text" class="form-control" v-model="ajuste.funcion.nombre" @input="validarAjusteCreacionScript('funcion', key, ajuste.funcion.nombre);">
                     </div>
                 </div>
                 <div class="col-6 mt-3" v-show="paso>=4">
@@ -296,21 +298,22 @@
                           Generar Script creación de la Función
                         </label>
                     </div>
-                </div>
-                <div class="col-6 mt-3" v-show="paso>=4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="" v-model="ajuste.inserts.generar_script">
-                        <label class="form-check-label" for="flexCheckDefault">
-                          Generar Inserts
-                        </label>
-                    </div>
-                </div>
+                </div>                
                 <div class="col-6 mt-3" v-show="paso>=4">
                     <div class="input-group mb-3">
                         <span class="input-group-text">
                             Tabla Insert
                         </span>
-                        <input type="text" class="form-control" v-model="ajuste.inserts.nombre_tabla">
+                        <input type="text" class="form-control" v-model="ajuste.inserts.nombre_tabla" @input="validarAjusteCreacionScript('inserts', key, ajuste.inserts.nombre_tabla);">
+                    </div>
+                </div>
+                <div class="col-6 mt-3" v-show="paso>=4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" 
+                            value="" v-model="ajuste.inserts.generar_script">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          Generar Inserts
+                        </label>
                     </div>
                 </div>
             </div>
@@ -363,21 +366,33 @@
                     </li>
                 </ul>
             </div>
-            <div class="col-12 mt-3 tab-content" v-show="paso>=5" v-for="(ajuste, key) in ajustesScripts">
+            <div class="col-12 mt-3 tab-content" v-show="paso>=5" v-for="(ajuste, key) in ajustesScripts">                
                 <div class="tab-pane fade show active" :id="'tabla_panel_' + key" 
                     role="tabpanel" aria-labelledby="'tabla_tab_' + key">
+                    <button class="btn btn-success mb-3" v-show="ajuste.tabla.script != ''" @click="descargarTextoCorrespondiente('Tabla', ajuste.tabla.script)">
+                        TXT
+                    </button>
                     <textarea v-model="ajuste.tabla.script" rows="10" class="form-control bg-dark text-white"></textarea>
                 </div>
-                <div class="tab-pane fade show" :id="'procedimiento_panel_' + key" 
+                <div class="tab-pane tab-pane-script fade show" :id="'procedimiento_panel_' + key" 
                     role="tabpanel" aria-labelledby="'procedimiento_tab_' + key">
+                    <button class="btn btn-success mb-3" v-show="ajuste.procedimiento.script != ''" @click="descargarTextoCorrespondiente('Procedimiento', ajuste.procedimiento.script)">
+                        TXT
+                    </button>
                     <textarea v-model="ajuste.procedimiento.script" rows="10" class="form-control bg-dark text-white"></textarea>
                 </div>
-                <div class="tab-pane fade show" :id="'funcion_panel_' + key" 
+                <div class="tab-pane tab-pane-script fade show" :id="'funcion_panel_' + key" 
                     role="tabpanel" aria-labelledby="'funcion_tab_' + key">
+                    <button class="btn btn-success mb-3" v-show="ajuste.funcion.script != ''" @click="descargarTextoCorrespondiente('Funcion', ajuste.funcion.script)">
+                        TXT
+                    </button>
                     <textarea v-model="ajuste.funcion.script" rows="10" class="form-control bg-dark text-white"></textarea>
                 </div>
-                <div class="tab-pane fade show" :id="'inserts_panel_' + key" 
+                <div class="tab-pane tab-pane-script fade show" :id="'inserts_panel_' + key" 
                     role="tabpanel" aria-labelledby="'inserts_tab_' + key">
+                    <button class="btn btn-success mb-3" v-show="ajuste.inserts.script != ''" @click="descargarTextoCorrespondiente('Inserts', ajuste.inserts.script)">
+                        TXT
+                    </button>
                     <textarea v-model="ajuste.inserts.script" rows="10" class="form-control bg-dark text-white"></textarea>
                 </div>
             </div>
@@ -447,7 +462,33 @@
             getTiposApexProcedimientos: ['get_varchar2', 'get_varchar2', 'get_varchar2', 'get_varchar2']
         }, 
         methods: {
-            generarScripts: function(){
+            validarAjusteCreacionScript(tipoAjuste, key, texto){
+                if(texto == '' && this.ajustesScripts[key][tipoAjuste]['generar_script']){
+                    this.ajustesScripts[key][tipoAjuste]['generar_script'] = 0;
+                }
+                if(texto != '' && !this.ajustesScripts[key][tipoAjuste]['generar_script']){
+                    this.ajustesScripts[key][tipoAjuste]['generar_script'] = true;
+                }
+            },
+            descargarTextoCorrespondiente(nombreArchivo, textcontent){
+                alertify.confirm(
+                    'Confirmación', 
+                    'Desea descargar el script actual?', 
+                    function(){ 
+                        let aleatorio = Math.floor(Math.random() * (1000)) + 1;
+                        let downloadableLink = document.createElement('a');
+                        downloadableLink.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(textcontent));
+                        downloadableLink.download = "script" + nombreArchivo + "_" + aleatorio + ".txt";
+                        document.body.appendChild(downloadableLink);
+                        downloadableLink.click();
+                        document.body.removeChild(downloadableLink);      
+                    },
+                    function(){ 
+
+                    }
+                );
+            },
+            generarScripts: function(){                
                 let indicador = 0;
                 let aErrores = [];
                 for (const a in this.ajustesScripts) {
@@ -494,8 +535,6 @@
             },
             crearScriptTabla: function(){
                 let scripts = [];
-                console.log('this.aSeleccionados');
-                console.error(this.aSeleccionados);
                 for (const a in this.ajustesScripts) {
                     this.ajustesScripts[a].tabla.script = '';
                     if(this.ajustesScripts[a].tabla.generar_script){
@@ -711,6 +750,13 @@
                 this.exportToCsv(fileName, aCSV);
                 alertify.success("- El archivo "+ fileName + " se generó correctamente");
             },
+            validarLongitudNumerica(key, indice){
+                if(!this.regExpNumerico.test(this.aSeleccionados[key].subcampos[indice].longitud)){
+                    alertify.error("- La longitud debe ser un valor númerico");
+                    this.aSeleccionados[key].subcampos[indice].longitud = 1;
+                    return;
+                }
+            },
             validarNombreEquivalente: function(key, indice){
                 if(!parseInt(this.aSeleccionados[key].subcampos[indice].nombre_equivalente.length)){
                     return;
@@ -835,11 +881,8 @@
                 let that = this;
                 that.aSeleccionados = [];
                 for (const a in that.principales) {
-                    console.warn('principales');
-                    console.error(that.principales[a]);
                     let subCampos = [];
                     for (const b in that.aCamposSeleccionados[a]) {
-                        console.info(that.aCamposSeleccionados[a][b]);
                         let numeroRegistros = parseInt(that.aCamposSeleccionados[a][b].length);
                         let calculoTipoLongitud = that.calcularTipoDatoSeleccionado(that.aTiposSeleccionados[a][b].toLowerCase());
                         subCampos.push({
@@ -858,11 +901,7 @@
                             subcampos: subCampos
                         });
                     }
-                }
-                console.error('aTiposSeleccionados');           
-                console.log(that.aTiposSeleccionados);     
-                console.warn('aSeleccionados');           
-                console.error(that.aSeleccionados);         
+                }     
             },
             calcularTipoDatoSeleccionado(tipoDato){
                 let calculoTipoLongitud = {
@@ -905,7 +944,6 @@
                         if(indice >= 0){// En caso de encontrarlo debemos proceder a aumentar el contadorCamposPrincipales 
                             this.contadorCamposPrincipales[indice]++;
                             this.contadorSeleccionados++;
-                            console.info('agregar seleccionado', path, tipo);
                             this.aCamposSeleccionados[indice].push(path);
                             this.aTiposSeleccionados[indice].push(tipo);
                             this.aCamposSeleccionadosStrings[indice].push(path.join("|||"));
