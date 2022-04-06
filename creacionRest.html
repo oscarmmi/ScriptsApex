@@ -202,26 +202,16 @@
                             <td>
                                 <select class="form-select" 
                                     aria-label="Seleccione el tipo de dato"
-                                    >
+                                    v-model="subcampo.tipo_dato_seleccionado">
                                     tiposGenerales
                                     <option v-for="(tipoGeneral, keyGeneral) in tiposGenerales" :value="keyGeneral">
                                         {{ tipoGeneral }}
                                     </option>
-                                    <!--
-                                    <option value="1">
-                                        Varchar
-                                    </option>
-                                    <option value="2">
-                                        Number
-                                    </option>
-                                    <option value="3">
-                                        Float
-                                    </option>
-                                    -->
                                   </select>
                             </td>
                             <td>
-                                <input class="form-control" type="text" placeholder="Longitud" aria-label="Ingrese la longitud del campo">
+                                <input class="form-control" type="text" placeholder="Longitud" 
+                                    aria-label="Ingrese la longitud del campo" v-model="subcampo.longitud">
                             </td>
                         </tr>
                     </tbody>
@@ -446,11 +436,15 @@
             tiposPrincipales: [],
             contadorCamposPrincipales: [],
             aCamposSeleccionados: [],
+            aTiposSeleccionados: [],
             aCamposSeleccionadosStrings: [],
             contadorSeleccionados: 0, 
             aSeleccionados: [],
             ajustesScripts: [],
-            tiposGenerales: ['Varchar', 'Number', 'Float']
+            tiposGenerales: ['Varchar', 'Number', 'Float', 'Boolean'],
+            // tiposGeneralesProcedimientos debe tener las equivalencias de tipos para la creacion del script de procedimientos
+            tiposGeneralesProcedimientos: ['VARCHAR2', 'VARCHAR2', 'VARCHAR2', 'VARCHAR2'], // Los registros deben ir en mayusculas 
+            getTiposApexProcedimientos: ['get_varchar2', 'get_varchar2', 'get_varchar2', 'get_varchar2']
         }, 
         methods: {
             generarScripts: function(){
@@ -500,6 +494,8 @@
             },
             crearScriptTabla: function(){
                 let scripts = [];
+                console.log('this.aSeleccionados');
+                console.error(this.aSeleccionados);
                 for (const a in this.ajustesScripts) {
                     this.ajustesScripts[a].tabla.script = '';
                     if(this.ajustesScripts[a].tabla.generar_script){
@@ -514,7 +510,8 @@
                         }
                         let aCampos = [];
                         for (const b in this.aSeleccionados[a].subcampos) {
-                            aCampos.push('"'+this.aSeleccionados[a].subcampos[b].nombre_equivalente+'" VARCHAR2(50)');
+                            let tipoCalculado = (this.tiposGenerales[this.aSeleccionados[a].subcampos[b].tipo_dato_seleccionado] == undefined) ? 'VARCHAR' : this.tiposGenerales[this.aSeleccionados[a].subcampos[b].tipo_dato_seleccionado].toUpperCase();
+                            aCampos.push('"'+this.aSeleccionados[a].subcampos[b].nombre_equivalente+'" '+tipoCalculado+'('+this.aSeleccionados[a].subcampos[b].longitud+')');
                         }
                         let secuencia = '';
                         if(this.ajustesScripts[a].tabla.generar_secuencial){
@@ -522,7 +519,7 @@
                             secuencia = `       
                                 -- ESTA SENTENCIA ES PARA LA CREACION DE LA SECUENCIA, SE RECOMIENDA EJECUTARLA POSTERIOR A LA CREACION DE LA TABLA                          
                                 CREATE OR REPLACE EDITIONABLE TRIGGER  "BI_${nombreTabla}" 
-                                before insert on "${nombreTabla}"               
+                                before insert on "${nombreTabla}"
                                 for each row  
                                 begin   
                                 if :NEW."${idPK}" is null then 
@@ -554,12 +551,14 @@
                         let aCampos = [];      
                         let camposExtraccion = [];
                         for (const b in this.aSeleccionados[a].subcampos) {
-                            aCampos.push('L_'+this.aSeleccionados[a].subcampos[b].nombre_equivalente+' VARCHAR2(50)');
+                            let tipoCalculado = (this.tiposGeneralesProcedimientos[this.aSeleccionados[a].subcampos[b].tipo_dato_seleccionado] == undefined) ? 'VARCHAR2' : this.tiposGeneralesProcedimientos[this.aSeleccionados[a].subcampos[b].tipo_dato_seleccionado];
+                            let tipoCalculadoApex = (this.getTiposApexProcedimientos[this.aSeleccionados[a].subcampos[b].tipo_dato_seleccionado] == undefined) ? 'get_varchar2' : this.getTiposApexProcedimientos[this.aSeleccionados[a].subcampos[b].tipo_dato_seleccionado];
+                            aCampos.push('L_'+this.aSeleccionados[a].subcampos[b].nombre_equivalente+' '+tipoCalculado+'('+this.aSeleccionados[a].subcampos[b].longitud+')');
                             // Para los campos extraccion es importante tener en cuenta que se debe realizar un cambio para tener en cuenta los tipos de datos get_varchar2
                             if(this.aSeleccionados[a].tipo == 'array'){
-                                camposExtraccion.push("L_"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+":=APEX_JSON.get_varchar2(p_path => '"+ this.aSeleccionados[a].campo +"['||k||']."+ this.aSeleccionados[a].subcampos[b].ruta_texto +"', p_values=>J_JSON)");
+                                camposExtraccion.push("L_"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+":=APEX_JSON." + tipoCalculadoApex + "(p_path => '"+ this.aSeleccionados[a].campo +"['||k||']."+ this.aSeleccionados[a].subcampos[b].ruta_texto +"', p_values=>J_JSON)");
                             }else if(this.aSeleccionados[a].tipo == 'object'){
-                                camposExtraccion.push("L_"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+":=APEX_JSON.get_varchar2(p_path => '"+ this.aSeleccionados[a].campo +"."+ this.aSeleccionados[a].subcampos[b].ruta_texto +"', p_values=>J_JSON)");
+                                camposExtraccion.push("L_"+this.aSeleccionados[a].subcampos[b].nombre_equivalente+":=APEX_JSON." + tipoCalculadoApex + "(p_path => '"+ this.aSeleccionados[a].campo +"."+ this.aSeleccionados[a].subcampos[b].ruta_texto +"', p_values=>J_JSON)");
                             }
                         }
                         let subScriptExtraccion = "";
@@ -836,15 +835,20 @@
                 let that = this;
                 that.aSeleccionados = [];
                 for (const a in that.principales) {
+                    console.warn('principales');
+                    console.error(that.principales[a]);
                     let subCampos = [];
                     for (const b in that.aCamposSeleccionados[a]) {
+                        console.info(that.aCamposSeleccionados[a][b]);
                         let numeroRegistros = parseInt(that.aCamposSeleccionados[a][b].length);
+                        let calculoTipoLongitud = that.calcularTipoDatoSeleccionado(that.aTiposSeleccionados[a][b].toLowerCase());
                         subCampos.push({
                             ruta: that.aCamposSeleccionados[a][b], 
                             ruta_texto: that.aCamposSeleccionados[a][b].slice(1, numeroRegistros).join("."),
                             nombre_equivalente: that.aCamposSeleccionados[a][b][(numeroRegistros - 1)].toUpperCase(),
-                            tipo_dato: '', 
-                            longitud: ''
+                            tipo_dato: that.aTiposSeleccionados[a][b], 
+                            tipo_dato_seleccionado: calculoTipoLongitud.tipo, 
+                            longitud: calculoTipoLongitud.longitud
                         });
                     }
                     if(subCampos.length){
@@ -854,8 +858,29 @@
                             subcampos: subCampos
                         });
                     }
-                }                
-            },            
+                }
+                console.error('aTiposSeleccionados');           
+                console.log(that.aTiposSeleccionados);     
+                console.warn('aSeleccionados');           
+                console.error(that.aSeleccionados);         
+            },
+            calcularTipoDatoSeleccionado(tipoDato){
+                let calculoTipoLongitud = {
+                    tipo: 0, // Varchar 
+                    longitud: 40
+                };
+                if(tipoDato == 'string'){
+                    calculoTipoLongitud.tipo = 0; // Varchar 
+                    calculoTipoLongitud.longitud = 40; 
+                }else if(tipoDato == 'number'){
+                    calculoTipoLongitud.tipo = 1; // Number 
+                    calculoTipoLongitud.longitud = 10; 
+                }else if(tipoDato == 'boolean'){
+                    calculoTipoLongitud.tipo = 1; // Boolean  
+                    calculoTipoLongitud.longitud = 1; 
+                }
+                return calculoTipoLongitud;
+            },
             validarSeleccionCampo:function (nivel, path, tipo){
                 if(!document.querySelector("#check_"+path.join("_"))){
                     return;
@@ -868,6 +893,7 @@
                         this.tiposPrincipales.push(tipo);
                         this.contadorCamposPrincipales.push(0);
                         this.aCamposSeleccionados.push([]);
+                        this.aTiposSeleccionados.push([]);
                         this.aCamposSeleccionadosStrings.push([]);
                     }else{// Para los campos hijos del json
                         if(!parseInt(path.length)){// En caso de que no tenga elementos el array path no se debe permitir que continue 
@@ -879,7 +905,9 @@
                         if(indice >= 0){// En caso de encontrarlo debemos proceder a aumentar el contadorCamposPrincipales 
                             this.contadorCamposPrincipales[indice]++;
                             this.contadorSeleccionados++;
+                            console.info('agregar seleccionado', path, tipo);
                             this.aCamposSeleccionados[indice].push(path);
+                            this.aTiposSeleccionados[indice].push(tipo);
                             this.aCamposSeleccionadosStrings[indice].push(path.join("|||"));
                         }else{
                             /*
@@ -902,6 +930,7 @@
                                 this.contadorCamposPrincipales.splice(indice, 1);   
                                 this.aCamposSeleccionadosStrings.splice(indice, 1);
                                 this.aCamposSeleccionados.splice(indice, 1);
+                                this.aTiposSeleccionados.splice(indice, 1);
                             }else{
                                 alertify.error("- No es posible deseleccionar el campo puesto que varios campos hijos ya fueron seleccionados");
                                 document.querySelector("#check_"+path.join("_")).checked = true;
@@ -922,6 +951,7 @@
                             if(indiceCadena >= 0){
                                 this.aCamposSeleccionadosStrings[indice].splice(indiceCadena, 1);
                                 this.aCamposSeleccionados[indice].splice(indiceCadena, 1);
+                                this.aTiposSeleccionados[indice].splice(indiceCadena, 1);
                             }
                         }
                     }
